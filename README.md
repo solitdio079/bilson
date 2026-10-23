@@ -1,26 +1,51 @@
 # Bilson — Film & Photography
-A responsive static personal portfolio in charcoal, ivory and amber. Open `dist/index.html` through any static server. No install or build required.
 
-Sample photographs are from Unsplash and are credited in the page and image viewer. Replace image URLs and text in `dist/index.html` and the `projects` array in `dist/app.js` with Bilson's real work. No films, clients, awards or production credits have been fabricated. Contact details have not been supplied, so the contact section currently states that they are coming soon. Replace that line with Bilson's actual email/social links before launch.
+## Project
+Static portfolio in `dist/`, with a password-protected admin at `/admin/` and a Netlify Function that saves `dist/content.json` to GitHub. No database. Media remains hosted externally. A GitHub save triggers a new deploy when the repository is connected to Netlify. Public visitors read the deployed JSON; allow the deployment to finish before checking changes.
 
-Features: responsive layout, keyboard-accessible image viewer, previous/next navigation, image credits, reduced-motion preference, native modal focus handling. SVG favicon and typographic Bilson wordmark included.
+## Deploy with GitHub + Netlify
+1. Push this project as its own GitHub repository, including `dist/content.json`, `netlify/`, and `netlify.toml`. **Never commit `.env`.**
+2. Import the repository in Netlify. Leave the build command empty, use `dist` as the publish directory. Functions directory is configured in `netlify.toml`. Node 22+ is required.
+3. Create a fine-grained GitHub personal access token limited to this repository, with **Contents: Read and write** permission. Choose an expiry and rotate it before it expires. The target branch must allow this account to commit directly. This token is only used by the server.
+4. In Netlify's environment settings, add the values below with **Functions** scope. The local ignored `.env` already contains the generated salt/hash for the requested admin password, plus a random session secret. Copy those three values privately into Netlify; do not add them to frontend code or `netlify.toml`.
 
-Run locally: `python3 -m http.server 5184 --directory dist`
+| Variable | Value |
+| --- | --- |
+| `ADMIN_PASSWORD_SALT` | From local `.env` |
+| `ADMIN_PASSWORD_HASH` | From local `.env` |
+| `SESSION_SECRET` | From local `.env` |
+| `GITHUB_TOKEN` | Repository-scoped token |
+| `GITHUB_REPOSITORY` | `owner/repository` |
+| `GITHUB_BRANCH` | The production branch, usually `main` |
+| `GITHUB_CONTENT_PATH` | `dist/content.json` |
 
-## Deploy to Netlify
+5. Redeploy after configuring variables. Open `/admin/`, sign in using the requested password, edit content, and select **Save to GitHub**. Confirm the new commit and successful Netlify deployment. Save conflicts preserve the draft; download it before reloading saved content.
 
-### Drag and drop (no build required)
-Upload `bilson-netlify.zip` to https://app.netlify.com/drop, or drag the `dist` folder into the deploy area. The ZIP contains `index.html` at its root. Do not upload the whole source folder for a manual static deployment.
+For a monorepo, set Netlify's base to `bilson-portfolio` and `GITHUB_CONTENT_PATH` to `bilson-portfolio/dist/content.json`.
 
-### Deploy from GitHub
-Push this project folder as its own repository and import it in Netlify. The included `netlify.toml` sets the publish directory to `dist`; leave the build command empty. No dependencies, environment variables, or backend are required. If using a repository with multiple projects, set the base directory to `bilson-portfolio`.
+**The old static ZIP/drag-and-drop deployment does not provide the admin backend.** Use the Git-connected deployment for this version. `bilson-cms-source.zip` contains the source without secrets; it is for repository setup, not Netlify Drop. Add the private environment variables separately.
 
-To refresh the manual deployment ZIP after edits, run from this project folder:
+## Local preview
+Node 22+ required, no package installation needed:
 
 ```sh
-python3 -c "import shutil; shutil.make_archive('bilson-netlify', 'zip', 'dist')"
+npm run dev
 ```
 
-The intro plays once per browser tab session, with a skip button. Scroll reveals and the intro respect reduced-motion settings. Images load from Unsplash and fonts from Google Fonts; these require internet access. Contact information and real portfolio work still need to be supplied before a public launch.
+Open http://127.0.0.1:5185/ and http://127.0.0.1:5185/admin/. The local development server uses the same password authentication but saves to the **local** JSON file instead of GitHub. It never sends local saves to the production repository. The old server at port 5184 only supports static viewing.
 
-Netlify documentation: https://docs.netlify.com/start/quickstarts/netlify-drop-quickstart/
+## Content editor
+- Add, edit, remove and reorder photos and videos.
+- Photos require a public HTTPS image URL; use direct media URLs rather than sharing-page links.
+- Videos support YouTube watch/short/share URLs, Vimeo URLs (including unlisted hashes), and direct MP4/WebM/OGV links. The hosting provider must permit embedding and the visitor must have access to the video.
+- Every video needs a public thumbnail image URL.
+- Titles, captions, accessibility descriptions, credits and sample-image labels are editable.
+- The uploaded film in `dist/assets/hero.mp4` is the fixed hero background, with a local poster and pause/play control. The first-photo hero behavior applies only when the hero uses an image; the remaining collection is shown in swipeable photo and video carousels. Viewers support keyboard navigation and stop playback when closed.
+- No video is fabricated for this demo. Current stock photos are credited and labeled; replace with Bilson's real work. Contact details still need to be supplied.
+
+## Security and validation
+Passwords are checked server-side using a salted scrypt hash. Eight-hour sessions use signed HttpOnly, SameSite cookies (Secure on HTTPS). Writes require matching Origin and authentication. The function has a per-IP rate limit; verify Netlify's post-processing deploy log confirms the rule. Media URLs and video providers are validated on both client and server. GitHub's file SHA prevents overwriting a newer edit. Rotating SESSION_SECRET invalidates existing sessions.
+
+Run `npm test` for auth, CSRF/origin, URL/provider validation, GitHub read/write and conflict checks. Real GitHub saving and live deployment still require the owner's repository/token setup.
+
+Docs: https://docs.netlify.com/build/functions/environment-variables/ and https://docs.github.com/en/rest/repos/contents
