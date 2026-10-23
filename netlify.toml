@@ -2,6 +2,7 @@
   publish = "dist"
   command = ""
 
+
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
