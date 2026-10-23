@@ -15,7 +15,8 @@ function repository(path){const {GITHUB_REPOSITORY,GITHUB_TOKEN,GITHUB_BRANCH='m
 async function github(config,method='GET',payload){return fetch(config.url+(method==='GET'?'?ref='+encodeURIComponent(config.branch):''),{method,headers:config.headers,body:payload?JSON.stringify(payload):undefined,signal:AbortSignal.timeout(15000)});}
 export default async function handler(request){
  const action=new URL(request.url).searchParams.get('action');
- if(!process.env.SESSION_SECRET||!process.env.ADMIN_PASSWORD_HASH||!process.env.ADMIN_PASSWORD_SALT)return result({error:'Admin authentication is not configured. Add the server environment variables first.'},503);
+ const missing=['SESSION_SECRET','ADMIN_PASSWORD_HASH','ADMIN_PASSWORD_SALT'].filter(key=>!process.env[key]);
+ if(missing.length)return result({error:`The deployed admin function cannot read: ${missing.join(', ')}. Check this deployment’s environment settings.`,missing},503);
  if(!['GET','POST','PUT'].includes(request.method))return result({error:'Method not allowed.'},405);
  if(request.method!=='GET'&&request.headers.get('origin')!==new URL(request.url).origin)return result({error:'Request origin not allowed.'},403);
  try{

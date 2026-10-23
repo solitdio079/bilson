@@ -17,3 +17,9 @@ test('authentication, origin protection, persistence and conflicts',async()=>{
  }finally{globalThis.fetch=original;}
  const logout=await handler(request('POST',{},cookie,'logout'));assert.match(logout.headers.get('set-cookie'),/Max-Age=0/);
 });
+
+test('configuration errors identify missing names without exposing secrets',async()=>{
+ const saved=process.env.SESSION_SECRET;
+ try{delete process.env.SESSION_SECRET;const response=await handler(request('GET'));assert.equal(response.status,503);const data=await response.json();assert.deepEqual(data.missing,['SESSION_SECRET']);assert.ok(!JSON.stringify(data).includes(process.env.ADMIN_PASSWORD_HASH));}
+ finally{process.env.SESSION_SECRET=saved;}
+});
