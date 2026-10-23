@@ -5,8 +5,8 @@ function show(index){
  current=(index+active.length)%active.length;const item=active[current];const container=document.querySelector('#viewer-media');container.replaceChildren();
  if(item.type==='photo'){const image=el('img');image.src=item.src;image.alt=item.alt||item.title;container.append(image);}
  else{const source=videoSource(item.src);const media=el(source.type==='embed'?'iframe':'video');media.src=source.src;
- if(source.type==='embed'){media.title=item.title;media.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';media.referrerPolicy='strict-origin-when-cross-origin';media.allowFullscreen=true;}
- else{media.controls=true;media.playsInline=true;media.preload='metadata';media.poster=item.poster;}container.append(media);}
+ if(source.type==='embed'){media.src+=(media.src.includes('?')?'&':'?')+(new URL(media.src).hostname==='www.youtube-nocookie.com'?'mute=1':'muted=1');media.title=item.title;media.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';media.referrerPolicy='strict-origin-when-cross-origin';media.allowFullscreen=true;}
+ else{media.muted=true;media.controls=true;media.playsInline=true;media.preload='metadata';media.poster=item.poster;}container.append(media);}
  document.querySelector('#viewer-title').textContent=item.title;document.querySelector('#viewer-kind').textContent=`${item.type==='photo'?'PHOTOGRAPHY':'FILM'}${item.sample?' / SAMPLE IMAGE':''}`;
  document.querySelector('#viewer-description').textContent=item.caption;const credit=document.querySelector('#image-credit');credit.textContent=item.credit;credit.hidden=!item.credit;if(item.creditUrl)credit.href=item.creditUrl;else credit.removeAttribute('href');
  document.querySelector('#position').textContent=`${current+1} / ${active.length}`;
@@ -37,12 +37,31 @@ document.querySelector('#credits-open').onclick=()=>{document.querySelector('#cr
 
 const heroVideo=document.querySelector('.hero-video');
 const heroToggle=document.querySelector('.hero-video-toggle');
-if(heroVideo&&heroToggle){
+const soundToggle=document.querySelector('.hero-sound-toggle');
+if(heroVideo&&heroToggle&&soundToggle){
  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
- const sync=()=>{heroToggle.textContent=heroVideo.paused?'PLAY VIDEO ▷':'PAUSE VIDEO Ⅱ';heroToggle.setAttribute('aria-label',heroVideo.paused?'Play background video':'Pause background video');};
- const start=()=>{heroVideo.muted=true;heroVideo.play().catch(sync);};
- heroVideo.addEventListener('play',sync);heroVideo.addEventListener('pause',sync);
- heroToggle.addEventListener('click',()=>heroVideo.paused?start():heroVideo.pause());
+ const sync=()=>{
+  heroToggle.textContent=heroVideo.paused?'PLAY VIDEO ▷':'PAUSE VIDEO Ⅱ';
+  heroToggle.setAttribute('aria-label',heroVideo.paused?'Play background video':'Pause background video');
+  const audible=!heroVideo.muted&&heroVideo.volume>0;
+  soundToggle.textContent=audible?'SOUND ON ♫':'ENABLE SOUND ♫';
+  soundToggle.setAttribute('aria-label',audible?'Mute background video':'Enable background video sound');
+  soundToggle.setAttribute('aria-pressed',String(audible));
+ };
+ const start=async()=>{
+  try{await heroVideo.play();}catch{
+   // Browsers can block autoplay with audio until a user gesture.
+   heroVideo.muted=true;
+   try{await heroVideo.play();}catch{/* The play button remains available. */}
+  }sync();
+ };
+ heroVideo.muted=false;heroVideo.volume=1;
+ heroVideo.addEventListener('play',sync);heroVideo.addEventListener('pause',sync);heroVideo.addEventListener('volumechange',sync);
+ heroToggle.addEventListener('click',()=>{if(heroVideo.paused)start();else heroVideo.pause();});
+ soundToggle.addEventListener('click',()=>{
+  heroVideo.muted=!(heroVideo.muted||heroVideo.volume===0);
+  if(!heroVideo.muted){heroVideo.volume=1;start();}sync();
+ });
  const preference=()=>{if(reduced.matches){heroVideo.autoplay=false;heroVideo.pause();}else{heroVideo.autoplay=true;start();}sync();};
  reduced.addEventListener('change',preference);preference();
 }

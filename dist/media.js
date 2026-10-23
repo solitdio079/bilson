@@ -1,4 +1,5 @@
 export function mediaURL(value) {
+  if(/^\/assets\/uploads\/[a-f0-9]{32}\.(jpg|png|gif|webp)$/.test(value))return {href:value};
   const url=new URL(value);
   if(url.protocol!=='https:'||url.username||url.password)throw new Error('Use a public HTTPS media link.');
   return url;

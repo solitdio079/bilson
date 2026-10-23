@@ -5,7 +5,7 @@ function changed(){dirty=true;$('#dirty').textContent='Unsaved changes';}
 async function request(method,action,payload){const response=await fetch(api+(action?'?action='+action:''),{method,credentials:'same-origin',headers:payload?{'Content-Type':'application/json'}:{},body:payload?JSON.stringify(payload):undefined});let data;try{data=await response.json();}catch{throw Error('Admin API unavailable. Run the included development server locally, or deploy through Netlify with Functions enabled.');}if(!response.ok){if(response.status===401){$('#login').hidden=false;$('#editor').hidden=true;}throw Error(data.error||'Request failed.');}return data;}
 function controls(disabled){busy=disabled;document.querySelectorAll('#editor button,#editor input,#editor textarea').forEach(n=>n.disabled=disabled);}
 async function load(){const data=await request('GET');draft=data.content;sha=data.sha;dirty=false;$('#login').hidden=true;$('#editor').hidden=false;$('#dirty').textContent='No unsaved changes';render();}
-$('#login').onsubmit=async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;message('Signing in…');try{await request('POST','login',{password:$('#password').value});$('#password').value='';await load();message('Signed in. Your saved content is ready.');}catch(e){message(e.message);}finally{button.disabled=false;}};
+$('#login').onsubmit=async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;message('Signing in…');try{await request('POST','login',{username:$('#username').value,password:$('#password').value});$('#password').value='';await load();message('Signed in. Your saved content is ready.');}catch(e){message(e.message);}finally{button.disabled=false;}};
 function node(tag,text){const n=document.createElement(tag);if(text)n.textContent=text;return n;}
 function render(){const parent=$('#items');parent.replaceChildren();draft.items.forEach((item,index)=>{const card=node('article');card.className='media-editor';const top=node('div');top.className='item-top';top.append(node('h2',`${index+1}. ${item.type==='photo'?'Photograph':'Video'}`));const actions=node('div');actions.className='actions';
  [['↑',-1],['↓',1],['Remove',0]].forEach(([label,delta])=>{const button=node('button',label);button.type='button';button.setAttribute('aria-label',delta?`${delta<0?'Move up':'Move down'} ${item.title||'item'}`:`Remove ${item.title||'item'}`);button.disabled=delta<0&&index===0||delta>0&&index===draft.items.length-1;button.onclick=()=>{if(delta){[draft.items[index],draft.items[index+delta]]=[draft.items[index+delta],draft.items[index]];}else{if(!confirm(`Remove “${item.title||'Untitled'}” from the portfolio?`))return;draft.items.splice(index,1);}changed();render();};actions.append(button);});top.append(actions);card.append(top);const fields=node('div');fields.className='fields';
@@ -19,3 +19,19 @@ $('#reload').onclick=async()=>{if(dirty&&!confirm('Discard unsaved edits and rel
 $('#download').onclick=()=>{const blob=new Blob([JSON.stringify(draft,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=node('a');a.href=url;a.download='bilson-content-draft.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 $('#logout').onclick=async()=>{if(dirty&&!confirm('Sign out and discard unsaved changes?'))return;try{await request('POST','logout');dirty=false;draft={version:1,items:[]};sha='';$('#items').replaceChildren();$('#editor').hidden=true;$('#login').hidden=false;message('Signed out.');}catch(e){message(e.message);}};
 window.addEventListener('beforeunload',event=>{if(dirty||busy){event.preventDefault();event.returnValue='';}});
+
+$('#upload-photos').onclick=()=>$('#photo-files').click();
+$('#photo-files').onchange=async event=>{
+ const files=[...event.target.files];if(!files.length)return;
+ if(draft.items.length+files.length>100){message('The portfolio supports up to 100 entries.');event.target.value='';return;}
+ controls(true);let uploaded=0;
+ try{for(const file of files){
+ if(file.size>3*1024*1024)throw Error(`${file.name} exceeds 3 MB. Resize it and try again.`);
+ message(`Uploading ${uploaded+1} of ${files.length}: ${file.name}…`);
+ const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=()=>reject(Error('Could not read the photo.'));reader.readAsDataURL(file);});
+ const result=await request('POST','upload',{data});
+ draft.items.push({id:crypto.randomUUID(),type:'photo',title:file.name.replace(/\.[^.]+$/,'').replace(/[-_]/g,' '),src:result.src,poster:'',alt:'',caption:'',credit:'',creditUrl:'',sample:false});changed();uploaded++;
+ }message(`${uploaded} photo${uploaded===1?'':'s'} uploaded. Add descriptions, then save to publish.`);
+ }catch(e){message(`${e.message}${uploaded?' Earlier uploads are in your draft. Save to publish them.':''}`);}
+ finally{event.target.value='';controls(false);render();}
+};

@@ -6,9 +6,12 @@ test('media validation and supported providers',()=>{assert.throws(()=>validateC
 test('authentication, origin protection, persistence and conflicts',async()=>{
  assert.equal((await handler(request('GET'))).status,401);assert.equal((await handler(request('PUT',{content:{version:1,items:[]},sha:'a'.repeat(40)}))).status,401);
  assert.equal((await handler(request('POST',{password:'wrong'},'','login'))).status,401);
- const signed=await handler(request('POST',{password:'test-only-password'},'','login'));assert.equal(signed.status,200);const full=signed.headers.get('set-cookie');assert.match(full,/HttpOnly/);assert.match(full,/Secure/);assert.match(full,/SameSite=Strict/);const cookie=full.split(';')[0];assert.equal((await handler(request('GET',null,cookie+'bad'))).status,401);
+ assert.equal((await handler(request('POST',{username:'wrong',password:'test-only-password'},'','login'))).status,401);
+ const signed=await handler(request('POST',{username:'Bilson',password:'test-only-password'},'','login'));assert.equal(signed.status,200);const full=signed.headers.get('set-cookie');assert.match(full,/HttpOnly/);assert.match(full,/Secure/);assert.match(full,/SameSite=Strict/);const cookie=full.split(';')[0];assert.equal((await handler(request('GET',null,cookie+'bad'))).status,401);
  const cross=request('PUT',{},cookie);cross.headers.set('origin','https://attacker.example');assert.equal((await handler(cross)).status,403);
  const original=globalThis.fetch;try{let put;globalThis.fetch=async(url,options)=>{if(options.method==='PUT'){put=JSON.parse(options.body);return Response.json({content:{sha:'b'.repeat(40)}});}return Response.json({sha:'a'.repeat(40),content:Buffer.from(JSON.stringify({version:1,items:[item]})).toString('base64')});};
+ assert.equal((await handler(request('POST',{data:Buffer.from('not an image').toString('base64')},cookie,'upload'))).status,400);
+ const upload=await handler(request('POST',{data:Buffer.from([255,216,255,0]).toString('base64')},cookie,'upload'));assert.equal(upload.status,200);assert.match((await upload.json()).src,/^\/assets\/uploads\/[a-f0-9]{32}\.jpg$/);
  const read=await handler(request('GET',null,cookie));assert.equal(read.status,200);assert.equal((await read.json()).content.items[0].title,'One');const save=await handler(request('PUT',{sha:'a'.repeat(40),content:{version:1,items:[item]}},cookie));assert.equal(save.status,200);assert.equal(put.sha,'a'.repeat(40));assert.equal(JSON.parse(Buffer.from(put.content,'base64')).items[0].src,item.src);
  globalThis.fetch=async()=>Response.json({},{status:409});assert.equal((await handler(request('PUT',{sha:'a'.repeat(40),content:{version:1,items:[item]}},cookie))).status,409);
  }finally{globalThis.fetch=original;}

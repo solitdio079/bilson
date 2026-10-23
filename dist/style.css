@@ -7,3 +7,5 @@
 .hero-video{object-position:center}.hero-video-toggle{position:absolute;right:4%;bottom:20px;z-index:2;border:1px solid #f1efe755;background:#14151399;padding:8px 12px;font-size:10px;letter-spacing:1px}.hero-video-toggle:hover{background:var(--ink);color:var(--bg)}
 
 .hero:has(.hero-video) .hero-bottom{justify-content:flex-end}
+
+.hero-sound-toggle{position:absolute;right:4%;bottom:66px;z-index:2;border:1px solid #f1efe755;background:#141513cc;padding:10px 14px;font-size:11px;letter-spacing:1px}.hero-sound-toggle:hover,.hero-sound-toggle[aria-pressed="false"]{background:var(--accent);color:var(--bg);border-color:var(--accent)}
