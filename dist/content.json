@@ -84,6 +84,18 @@
       "credit": "Bilson",
       "creditUrl": "",
       "sample": false
+    },
+    {
+      "id": "a685a24d-8ec4-4bcf-a1cc-7b98b1410c96",
+      "type": "photo",
+      "title": "IMG 20261008 WA0066",
+      "src": "/assets/uploads/dfa0de2a50f9778edd3d630841ace2a4.jpg",
+      "poster": "",
+      "caption": "",
+      "alt": "TEST of upload functioonality",
+      "credit": "",
+      "creditUrl": "",
+      "sample": true
     }
   ]
 }
